@@ -33,7 +33,7 @@ namespace MultiTurnProBot
             services.AddSingleton<IBotFrameworkHttpAdapter, AdapterWithErrorHandler>();
 
             // Create the bot as a transient. In this case the ASP Controller is expecting an IBot.
-            //services.AddTransient<IBot, Bots.EchoBot>();
+
             services.AddTransient<IBot, Bots.DialogBot<UserProfile>>();
             // Create the User state. (Used in this bot's Dialog implementation.)
             services.AddSingleton<UserState>();
