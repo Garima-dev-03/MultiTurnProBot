@@ -14,12 +14,15 @@ namespace MultiTurnProBot.Bots
     public class UserProfile: ComponentDialog
     {
         private readonly IStatePropertyAccessor<UserProfileClass> _userProfileAccessor;
+        private static readonly string UserName = "userName";
+        private static readonly string UserConatct = "userContact";
         public UserProfile(UserState userState):base(nameof(UserProfileClass))
         {
             _userProfileAccessor = userState.CreateProperty<UserProfileClass>("UserProfileClass");
 
-            // This array defines how the Waterfall will execute.
-            var waterfallSteps = new WaterfallStep[]
+       
+        // This array defines how the Waterfall will execute.
+        var waterfallSteps = new WaterfallStep[]
             {
                 TransportStepAsync,
                 NameStepAsync,
@@ -34,7 +37,9 @@ namespace MultiTurnProBot.Bots
             // Add named dialogs to the DialogSet. These names are saved in the dialog state.
             AddDialog(new WaterfallDialog(nameof(WaterfallDialog), waterfallSteps));
             AddDialog(new TextPrompt(nameof(TextPrompt)));
-            AddDialog(new NumberPrompt<int>(nameof(NumberPrompt<int>)));
+            AddDialog(new TextPrompt(UserName, UserNameValidation));
+            AddDialog(new TextPrompt(UserConatct, UserContactValidation));
+            AddDialog(new NumberPrompt<int>(nameof(NumberPrompt<int>), AgePromptValidatorAsync));
             AddDialog(new ChoicePrompt(nameof(ChoicePrompt)));
             AddDialog(new ConfirmPrompt(nameof(ConfirmPrompt)));
 
@@ -43,6 +48,22 @@ namespace MultiTurnProBot.Bots
             InitialDialogId = nameof(WaterfallDialog);
 
         }
+        private static Task<bool> AgePromptValidatorAsync(PromptValidatorContext<int> promptContext, CancellationToken cancellationToken)
+        {
+           
+            return Task.FromResult(promptContext.Recognized.Succeeded && promptContext.Recognized.Value > 18 && promptContext.Recognized.Value < 45);
+        }
+        private Task<bool> UserNameValidation(PromptValidatorContext<string> promptContext, CancellationToken cancellationToken)
+        {
+            
+            return Task.FromResult(promptContext.Recognized.Succeeded);
+        }
+        private Task<bool> UserContactValidation(PromptValidatorContext<string> promptContext, CancellationToken cancellationToken)
+        {
+         
+            return Task.FromResult(promptContext.Recognized.Succeeded && promptContext.Recognized.Value.Length==10 && (promptContext.Recognized.Value.Substring(0,1)=="9" || promptContext.Recognized.Value.Substring(0, 1) == "7"||promptContext.Recognized.Value.Substring(0, 1) == "8"|| promptContext.Recognized.Value.Substring(0, 1) == "6"));
+        }
+
         private static async Task<DialogTurnResult> TransportStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
            
@@ -59,7 +80,7 @@ namespace MultiTurnProBot.Bots
         {
             stepContext.Values["transport"] = ((FoundChoice)stepContext.Result).Value;
 
-            return await stepContext.PromptAsync(nameof(TextPrompt), new PromptOptions { Prompt = MessageFactory.Text("Please enter your name.") },
+            return await stepContext.PromptAsync(UserName, new PromptOptions { Prompt = MessageFactory.Text("Please enter your name.") },
                 cancellationToken);
         }
         private async Task<DialogTurnResult> NameConfirmStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
@@ -74,7 +95,8 @@ namespace MultiTurnProBot.Bots
             return await stepContext.PromptAsync(nameof(ConfirmPrompt),
                 new PromptOptions
                 {
-                    Prompt = MessageFactory.Text("Would you like to give your age?")
+                    Prompt = MessageFactory.Text("Would you like to give your age?"),
+                    
                 }
                 , cancellationToken);
         }
@@ -101,39 +123,16 @@ namespace MultiTurnProBot.Bots
 
         private static async Task<DialogTurnResult> LocationStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-            var Age = (int)stepContext.Result;
-            if(Age >= 18 && Age <= 45)
-            {
-                stepContext.Values["age"] = Age;
-                await stepContext.Context.SendActivityAsync(MessageFactory.Text($"I have your age as{stepContext.Values["age"] }"),cancellationToken);
+  
+                stepContext.Values["age"] = (int)stepContext.Result;
+                await stepContext.Context.SendActivityAsync(MessageFactory.Text($"I have your age as {stepContext.Values["age"] }"), cancellationToken);
                 var promptOptions = new PromptOptions
                 {
                     Prompt = MessageFactory.Text("Please Enter your location for the pickup."),
 
-                };
-
-                return await stepContext.PromptAsync(nameof(TextPrompt), promptOptions, cancellationToken);
-            }
-           
-            else
-            {
-                if(Age==-1)
-                {
-                    await stepContext.Context.SendActivityAsync(MessageFactory.Text("No age is given"), cancellationToken);
-                }
-                else
-                {
-                    await stepContext.Context.SendActivityAsync(MessageFactory.Text("Invalid input"), cancellationToken);
-                }
-                stepContext.Values["age"] = 0;
-                var promptOptions = new PromptOptions
-                {
-                    Prompt = MessageFactory.Text("Please Enter your location for the pickup."),
-
-                };
-
-                return await stepContext.PromptAsync(nameof(TextPrompt), promptOptions, cancellationToken);
-            }
+                }; return await stepContext.PromptAsync(nameof(TextPrompt), promptOptions, cancellationToken);
+                
+            
             
 
         }
@@ -144,45 +143,29 @@ namespace MultiTurnProBot.Bots
             await stepContext.Context.SendActivityAsync(MessageFactory.Text($"Your location for the pickup is {stepContext.Result}"), cancellationToken);
 
             var promptOptions = new PromptOptions
-                {
-                    Prompt = MessageFactory.Text("PLease enter your number!(Enter 10 digit number only!)"),
-
-
-                };
-                return await stepContext.PromptAsync(nameof(TextPrompt), promptOptions, cancellationToken);
+            {
+                Prompt = MessageFactory.Text("PLease enter your number!"),
+                RetryPrompt = MessageFactory.Text("10 digit number only!")
+            };
+                return await stepContext.PromptAsync(UserConatct, promptOptions, cancellationToken);
        
         }
 
         private static async Task<DialogTurnResult> ConfirmStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-
-            var contact = (string)stepContext.Result;
-            if(contact.Length==10 &&(contact.Substring(0, 1) == "9" || contact.Substring(0, 1) == "7" || contact.Substring(0, 1) == "8" || contact.Substring(0, 1) == "6"))
-            {
-                stepContext.Values["contact"] = contact;
-                var promtOptions = new PromptOptions
-                {
-                    Prompt = MessageFactory.Text("Do you want to see your information")
-                };
             
-                return await stepContext.PromptAsync(nameof(ConfirmPrompt), promtOptions, cancellationToken);
-
-            }
-            else
-            {
-                stepContext.Values["contact"] = "NIL";
-                await stepContext.Context.SendActivityAsync(MessageFactory.Text("Invalid number"));
+                stepContext.Values["contact"] = (string)stepContext.Result;
+                await stepContext.Context.SendActivityAsync(MessageFactory.Text($"I have your contact as {stepContext.Result}"), cancellationToken);
                 var promtOptions = new PromptOptions
                 {
                     Prompt = MessageFactory.Text("Do you want to see your information")
                 };
                 return await stepContext.PromptAsync(nameof(ConfirmPrompt), promtOptions, cancellationToken);
-
-            }
-          
-         
+            
            
-        }
+              
+
+         }
         private async Task<DialogTurnResult> SummaryStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         { 
 
