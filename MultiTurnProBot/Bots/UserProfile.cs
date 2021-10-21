@@ -16,6 +16,7 @@ namespace MultiTurnProBot.Bots
         private readonly IStatePropertyAccessor<UserProfileClass> _userProfileAccessor;
         private static readonly string UserName = "userName";
         private static readonly string UserConatct = "userContact";
+        private static readonly string UserChoice = "userChoice";
         public UserProfile(UserState userState):base(nameof(UserProfileClass))
         {
             _userProfileAccessor = userState.CreateProperty<UserProfileClass>("UserProfileClass");
@@ -41,6 +42,7 @@ namespace MultiTurnProBot.Bots
             AddDialog(new TextPrompt(UserConatct, UserContactValidation));
             AddDialog(new NumberPrompt<int>(nameof(NumberPrompt<int>), AgePromptValidatorAsync));
             AddDialog(new ChoicePrompt(nameof(ChoicePrompt)));
+            AddDialog(new ChoicePrompt(UserChoice, UserTransportValidation));
             AddDialog(new ConfirmPrompt(nameof(ConfirmPrompt)));
 
 
@@ -63,16 +65,32 @@ namespace MultiTurnProBot.Bots
          
             return Task.FromResult(promptContext.Recognized.Succeeded && promptContext.Recognized.Value.Length==10 && (promptContext.Recognized.Value.Substring(0,1)=="9" || promptContext.Recognized.Value.Substring(0, 1) == "7"||promptContext.Recognized.Value.Substring(0, 1) == "8"|| promptContext.Recognized.Value.Substring(0, 1) == "6"));
         }
+        private  Task<bool> UserTransportValidation(PromptValidatorContext<FoundChoice> promptContext, CancellationToken cancellationToken)
+        {       
+            string temp = promptContext.Context.Activity.Text;
+            Console.WriteLine(temp);
+            var list = new string [] { "Four Wheeler", "four wheeler", "Four Wheeler", "four Wheeler", "Four wheeler", "Two Wheeler", "two wheeler", "Two Wheeler", "two Wheeler", "Twowheeler", "Two Wheeler", "three wheeler", "Three Wheeler", "three Wheeler", "Three wheeler" };
+              if(list.Contains(temp))
+                {
+                    return Task.FromResult(true);
+
+            }
+            else {
+                return Task.FromResult(false);
+            }
+            
+        }
 
         private static async Task<DialogTurnResult> TransportStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
            
-            return await stepContext.PromptAsync(nameof(ChoicePrompt),
+            return await stepContext.PromptAsync(UserChoice,
                 new PromptOptions
                 {
                     
                     Prompt = MessageFactory.Text("By what you travel to office. (Mode of transport)"),
                     Choices = ChoiceFactory.ToChoices(new List<string> { "Four wheeler", "three wheeler", "Two wheeler" }),
+                    RetryPrompt= MessageFactory.Text("Please select the one from the options. ")
 
                 }, cancellationToken);
         }
@@ -123,7 +141,6 @@ namespace MultiTurnProBot.Bots
 
         private static async Task<DialogTurnResult> LocationStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
-  
                 stepContext.Values["age"] = (int)stepContext.Result;
                 await stepContext.Context.SendActivityAsync(MessageFactory.Text($"I have your age as {stepContext.Values["age"] }"), cancellationToken);
                 var promptOptions = new PromptOptions
@@ -132,8 +149,6 @@ namespace MultiTurnProBot.Bots
 
                 }; return await stepContext.PromptAsync(nameof(TextPrompt), promptOptions, cancellationToken);
                 
-            
-            
 
         }
       
