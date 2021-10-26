@@ -22,6 +22,7 @@ namespace MultiTurnProBot.Bots
             };
 
             // Add named dialogs to the DialogSet. These names are saved in the dialog state.
+
             AddDialog(new WaterfallDialog(nameof(WaterfallDialog), waterfallSteps));
             AddDialog(new TextPrompt(nameof(TextPrompt)));
 
