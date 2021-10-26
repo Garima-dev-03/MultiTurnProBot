@@ -6,6 +6,7 @@ using Microsoft.Bot.Schema;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,18 +14,18 @@ namespace MultiTurnProBot.Bots
 {
     public class UserProfile: ComponentDialog
     {
-        private readonly IStatePropertyAccessor<UserProfileClass> _userProfileAccessor;
+        //private readonly IStatePropertyAccessor<UserProfileClass> _userProfileAccessor;
         private static readonly string UserName = "userName";
         private static readonly string UserConatct = "userContact";
         private static readonly string UserChoice = "userChoice";
-        public UserProfile(UserState userState):base(nameof(UserProfileClass))
+        public UserProfile()
+            :base(nameof(UserProfile))
         {
-            _userProfileAccessor = userState.CreateProperty<UserProfileClass>("UserProfileClass");
 
-       
-        // This array defines how the Waterfall will execute.
-        var waterfallSteps = new WaterfallStep[]
-            {
+            // This array defines how the Waterfall will execute.
+            AddDialog(new WaterfallDialog(nameof(WaterfallDialog), new WaterfallStep[]
+               {
+              
                 TransportStepAsync,
                 NameStepAsync,
                 NameConfirmStepAsync,
@@ -33,10 +34,10 @@ namespace MultiTurnProBot.Bots
                 ContactInfoStepAsync,
                 ConfirmStepAsync,
                 SummaryStepAsync,
-            };
+            }));
 
             // Add named dialogs to the DialogSet. These names are saved in the dialog state.
-            AddDialog(new WaterfallDialog(nameof(WaterfallDialog), waterfallSteps));
+    
             AddDialog(new TextPrompt(nameof(TextPrompt)));
             AddDialog(new TextPrompt(UserName, UserNameValidation));
             AddDialog(new TextPrompt(UserConatct, UserContactValidation));
@@ -50,6 +51,9 @@ namespace MultiTurnProBot.Bots
             InitialDialogId = nameof(WaterfallDialog);
 
         }
+
+       
+
         private static Task<bool> AgePromptValidatorAsync(PromptValidatorContext<int> promptContext, CancellationToken cancellationToken)
         {
            
@@ -57,29 +61,50 @@ namespace MultiTurnProBot.Bots
         }
         private Task<bool> UserNameValidation(PromptValidatorContext<string> promptContext, CancellationToken cancellationToken)
         {
-            
-            return Task.FromResult(promptContext.Recognized.Succeeded);
+            string name = promptContext.Recognized.Value;
+            name.Any(c => char.IsDigit(c));
+            //if (Regex.IsMatch(name, @"^\d+$"))
+            if (name.Any(c => char.IsDigit(c)))
+            {
+                return Task.FromResult(false);
+
+            }
+            else
+            {
+                return Task.FromResult(true);
+            }
+                
         }
         private Task<bool> UserContactValidation(PromptValidatorContext<string> promptContext, CancellationToken cancellationToken)
         {
          
             return Task.FromResult(promptContext.Recognized.Succeeded && promptContext.Recognized.Value.Length==10 && (promptContext.Recognized.Value.Substring(0,1)=="9" || promptContext.Recognized.Value.Substring(0, 1) == "7"||promptContext.Recognized.Value.Substring(0, 1) == "8"|| promptContext.Recognized.Value.Substring(0, 1) == "6"));
         }
-        private  Task<bool> UserTransportValidation(PromptValidatorContext<FoundChoice> promptContext, CancellationToken cancellationToken)
+        private async Task<bool> UserTransportValidation(PromptValidatorContext<FoundChoice> promptContext, CancellationToken cancellationToken)
         {       
-            string temp = promptContext.Context.Activity.Text;
-            Console.WriteLine(temp);
-            var list = new string [] { "Four Wheeler", "four wheeler", "Four Wheeler", "four Wheeler", "Four wheeler", "Two Wheeler", "two wheeler", "Two Wheeler", "two Wheeler", "Twowheeler", "Two Wheeler", "three wheeler", "Three Wheeler", "three Wheeler", "Three wheeler" };
-              if(list.Contains(temp))
+           
+            string text = (promptContext.Context.Activity.Text).ToLower();
+            var list = new string [] {"four wheeler", "three wheeler","two wheeler"};
+              if(list.Contains(text))
                 {
-                    return Task.FromResult(true);
+                    return (true);
 
-            }
+               }
             else {
-                return Task.FromResult(false);
+                if (promptContext.AttemptCount > 3)
+                {
+
+                    await promptContext.Context.SendActivityAsync(MessageFactory.Text("Reached maximum limit of attempts"), cancellationToken); ;
+                    return false;
+                }
+                else
+                    return false;
+               
+                
             }
             
         }
+       
 
         private static async Task<DialogTurnResult> TransportStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
@@ -90,7 +115,8 @@ namespace MultiTurnProBot.Bots
                     
                     Prompt = MessageFactory.Text("By what you travel to office. (Mode of transport)"),
                     Choices = ChoiceFactory.ToChoices(new List<string> { "Four wheeler", "three wheeler", "Two wheeler" }),
-                    RetryPrompt= MessageFactory.Text("Please select the one from the options. ")
+                    RetryPrompt= MessageFactory.Text("Please select the one from the options. "),
+                    
 
                 }, cancellationToken);
         }
@@ -98,7 +124,7 @@ namespace MultiTurnProBot.Bots
         {
             stepContext.Values["transport"] = ((FoundChoice)stepContext.Result).Value;
 
-            return await stepContext.PromptAsync(UserName, new PromptOptions { Prompt = MessageFactory.Text("Please enter your name.") },
+            return await stepContext.PromptAsync(UserName, new PromptOptions { Prompt = MessageFactory.Text("Please enter your name."),RetryPrompt= MessageFactory.Text("Name should be in alphabets only!") },
                 cancellationToken);
         }
         private async Task<DialogTurnResult> NameConfirmStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
@@ -106,8 +132,6 @@ namespace MultiTurnProBot.Bots
             var name = stepContext.Result.ToString();
 
             stepContext.Values["name"] = (string)stepContext.Result;
-
-        
             await stepContext.Context.SendActivityAsync(MessageFactory.Text($"Thanks {stepContext.Result}."), cancellationToken);
 
             return await stepContext.PromptAsync(nameof(ConfirmPrompt),
@@ -128,7 +152,6 @@ namespace MultiTurnProBot.Bots
                     Prompt = MessageFactory.Text("Please enter your age."),
                     RetryPrompt = MessageFactory.Text("The value entered must be greater than 18 and less than 45."),
                 };
-
                 return await stepContext.PromptAsync(nameof(NumberPrompt<int>), promptOptions, cancellationToken);
             }
             else
@@ -138,7 +161,6 @@ namespace MultiTurnProBot.Bots
 
             }
         }
-
         private static async Task<DialogTurnResult> LocationStepAsync(WaterfallStepContext stepContext, CancellationToken cancellationToken)
         {
                 stepContext.Values["age"] = (int)stepContext.Result;
@@ -160,7 +182,7 @@ namespace MultiTurnProBot.Bots
             var promptOptions = new PromptOptions
             {
                 Prompt = MessageFactory.Text("PLease enter your number!"),
-                RetryPrompt = MessageFactory.Text("10 digit number only!")
+                RetryPrompt = MessageFactory.Text("Invalid number!")
             };
                 return await stepContext.PromptAsync(UserConatct, promptOptions, cancellationToken);
        
@@ -186,7 +208,8 @@ namespace MultiTurnProBot.Bots
 
             if ((bool)stepContext.Result)
             {
-                var userProfile = await _userProfileAccessor.GetAsync(stepContext.Context, () => new UserProfileClass(), cancellationToken);
+                UserProfileClass userProfile = new UserProfileClass();
+               // var userProfile = await _userProfileAccessor.GetAsync(stepContext.Context, () => new UserProfileClass(), cancellationToken);
                 userProfile.Transport = (string)stepContext.Values["transport"];
                 userProfile.Name =   (string)stepContext.Values["name"];
                 userProfile.Age =    (int)stepContext.Values["age"];

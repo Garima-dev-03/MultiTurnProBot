@@ -34,7 +34,7 @@ namespace MultiTurnProBot
 
             // Create the bot as a transient. In this case the ASP Controller is expecting an IBot.
 
-            services.AddTransient<IBot, Bots.DialogBot<UserProfile>>();
+            services.AddTransient<IBot, Bots.DialogBot<RootDialog>>();
             // Create the User state. (Used in this bot's Dialog implementation.)
             services.AddSingleton<UserState>();
 
@@ -42,7 +42,7 @@ namespace MultiTurnProBot
             services.AddSingleton<ConversationState>();
 
             // The Dialog that will be run by the bot.
-            services.AddSingleton<UserProfile>();
+            services.AddSingleton<RootDialog>();
 
 
         }
