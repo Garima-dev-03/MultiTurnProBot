@@ -6,7 +6,6 @@ using Microsoft.Bot.Schema;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -14,7 +13,7 @@ namespace MultiTurnProBot.Bots
 {
     public class UserProfile: ComponentDialog
     {
-        //private readonly IStatePropertyAccessor<UserProfileClass> _userProfileAccessor;
+      
         private static readonly string UserName = "userName";
         private static readonly string UserConatct = "userContact";
         private static readonly string UserChoice = "userChoice";
@@ -43,6 +42,7 @@ namespace MultiTurnProBot.Bots
             AddDialog(new TextPrompt(UserConatct, UserContactValidation));
             AddDialog(new NumberPrompt<int>(nameof(NumberPrompt<int>), AgePromptValidatorAsync));
             AddDialog(new ChoicePrompt(nameof(ChoicePrompt)));
+            AddDialog(new ChoicePrompt(UserChoice, UserTransportValidation));
             AddDialog(new ChoicePrompt(UserChoice, UserTransportValidation));
             AddDialog(new ConfirmPrompt(nameof(ConfirmPrompt)));
 
@@ -157,7 +157,7 @@ namespace MultiTurnProBot.Bots
             else
             {
                
-                return await stepContext.NextAsync(-1, cancellationToken);
+                return await stepContext.NextAsync(0, cancellationToken);
 
             }
         }
@@ -198,8 +198,6 @@ namespace MultiTurnProBot.Bots
                     Prompt = MessageFactory.Text("Do you want to see your information")
                 };
                 return await stepContext.PromptAsync(nameof(ConfirmPrompt), promtOptions, cancellationToken);
-            
-           
               
 
          }

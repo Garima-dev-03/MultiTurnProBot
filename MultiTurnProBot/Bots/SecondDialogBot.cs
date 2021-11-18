@@ -12,13 +12,11 @@ namespace MultiTurnProBot.Bots
             : base(nameof(SecondDialogBot))
         {
          
-      
             AddDialog(new WaterfallDialog(nameof(WaterfallDialog), new WaterfallStep[]
            {
                 EmpIdStepAsync,
                 MentorNameStepAsync,
-                
-
+               
             }));
 
            

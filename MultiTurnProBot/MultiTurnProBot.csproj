@@ -13,6 +13,10 @@
     <PackageReference Include="NPOI" Version="2.5.4" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\UserDialog\UserDialog.csproj" />
+  </ItemGroup>
+
     <ItemGroup>
     <Content Update="appsettings.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
